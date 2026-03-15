@@ -32,7 +32,7 @@ Odpověz POUZE platným JSON polem. Žádný markdown, žádné backticky, žád
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-latest",
+        model: "claude-3-haiku-20240307",
         max_tokens: 8000,
         messages: [{ role: "user", content: prompt }],
       }),
