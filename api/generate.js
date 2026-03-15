@@ -10,18 +10,18 @@ export default async function handler(req, res) {
   if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
 
   const { month, location } = req.body || {};
-  if (!month || !location) return res.status(400).json({ error: "Missing month or location" });
+  if (!month || !location) return res.status(400).json({ error: "Missing params" });
 
   const isAU = location.includes("Austrálie") || location.includes("Australia");
   const countryShort = isAU ? "Austrálii" : "ČR";
   const localKey = isAU ? "localRelevance" : "czechRelevance";
 
-  const prompt = `Jsi expert na analýzu trhů a podnikatelských příležitostí. Proveď analýzu příležitostí pro ${month} 2026 v kontextu: ${location}.
+  const prompt = `Vytvoř JSON pole s 12 podnikatelskými příležitostmi pro ${month} 2026. Kontext: ${location}. Min 4 specifické pro ${countryShort}, zbytek globální.
 
-Vytvoř přesně 12 příležitostí seřazených podle expectedValue sestupně. Minimálně 4 musí být specifické pro ${countryShort}, zbylé globální. Mix oblastí: AI, investice, služby, niche trhy, regulatorní změny.
+POUZE JSON pole, žádný jiný text. Každý objekt:
+{"title":"česky","category":"česky","expectedValue":85,"difficulty":50,"capital":"Nízký/Střední/Vysoký","timeHorizon":"3-6 měsíců","asymmetry":"Velmi vysoká/Vysoká/Střední","competition":"česky","tags":["t1","t2"],"description":"2-3 věty česky","monetization":["m1","m2","m3","m4"],"inefficiency":"1-2 věty česky","${localKey}":"1-2 věty česky"}
 
-Odpověz POUZE platným JSON polem. Žádný markdown, žádné backticky, žádný text před nebo za polem. Struktura každého objektu:
-{"id":1,"rank":"01","title":"název česky","category":"kategorie česky","expectedValue":85,"difficulty":50,"capital":"Nízký","timeHorizon":"3-6 měsíců","asymmetry":"Vysoká","competition":"Střední","tags":["tag1","tag2"],"description":"3-4 věty česky","monetization":["cesta1","cesta2","cesta3","cesta4"],"inefficiency":"2 věty česky","${localKey}":"2 věty česky pro ${countryShort}"}`;
+Seřaď dle expectedValue sestupně. Mix: AI, investice, energie, zdravotnictví, služby, niche trhy.`;
 
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -33,26 +33,28 @@ Odpověz POUZE platným JSON polem. Žádný markdown, žádné backticky, žád
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 8000,
+        max_tokens: 6000,
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(502).json({ error: "API error " + response.status, detail: errText.substring(0, 500) });
+      return res.status(502).json({ error: "API " + response.status, detail: errText.substring(0, 300) });
     }
 
     const data = await response.json();
-    const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
-    if (!text) return res.status(502).json({ error: "Empty response" });
+    const text = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return res.status(502).json({ error: "Parse error" });
 
-    const cleaned = text.replace(/```json|```/g, "").trim();
-    const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return res.status(502).json({ error: "Parse error", raw: cleaned.substring(0, 300) });
+    const opps = JSON.parse(match[0]).map((item, i) => ({
+      ...item,
+      id: i + 1,
+      rank: String(i + 1).padStart(2, "0"),
+    }));
 
-    const opportunities = JSON.parse(jsonMatch[0]);
-    return res.status(200).json({ opportunities });
+    return res.status(200).json({ opportunities: opps });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
