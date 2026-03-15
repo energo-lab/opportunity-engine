@@ -408,7 +408,7 @@ export default function OpportunityEngine() {
           ◆ Opportunity Discovery Engine
         </div>
         <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, lineHeight: 1.2, background: "linear-gradient(135deg, #e0e0e8, #00f0ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-          Příležitosti
+          Příležitosti pro Vaška a Honzu ;-)
         </h1>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 14, flexWrap: "wrap" }}>
